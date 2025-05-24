@@ -7153,7 +7153,7 @@ static int ndpi_init_packet(struct ndpi_detection_module_struct *ndpi_str,
 	  char fingerprint[128], options_fp[128];
 	  u_int8_t i, fp_idx = 0, options_fp_len = 0;
 
-	  if(tcp_header_len > sizeof(struct ndpi_tcphdr)) {
+	  if(tcp_header_len >= sizeof(struct ndpi_tcphdr)) {
 	    u_int8_t *options = (u_int8_t*)(&t[sizeof(struct ndpi_tcphdr)]);
 	    u_int8_t options_len = tcp_header_len - sizeof(struct ndpi_tcphdr);
 	    u_int16_t tcp_win = ntohs(packet->tcp->window);
