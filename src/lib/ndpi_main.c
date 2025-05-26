@@ -7215,7 +7215,8 @@ static int ndpi_init_packet(struct ndpi_detection_module_struct *ndpi_str,
 		}
 
 		i += len;
-	      }
+	      } else
+		break;
 	    } /* for */
 
 #ifdef DEBUG_TCP_OPTIONS
