@@ -411,8 +411,8 @@ int stringUtilsUnitTest(void) {
   /* ndpi_check_punycode_string */
   assert(ndpi_check_punycode_string("xn--nxasmq6b.com", 16) == 1);
   assert(ndpi_check_punycode_string("google.com", 10) == 0);
-  assert(ndpi_check_punycode_string("xn--", 4) == 1); /* minimal valid punycode prefix */
-  assert(ndpi_check_punycode_string("abc", 3) == 0);  /* too short to contain "xn--" */
+  assert(ndpi_check_punycode_string("xn--a", 5) == 1);   /* punycode prefix detection */
+  assert(ndpi_check_punycode_string("abc", 3) == 0);     /* too short to contain "xn--" */
 
   printf("%30s                      OK\n", __func__);
   return 0;
@@ -665,7 +665,7 @@ int bitmapUnitTest(void) {
       count++;
     }
     assert(count == 3);
-    ndpi_bitmap_iterator_free((ndpi_bitmap *)it);
+    ndpi_bitmap_iterator_free(it);
   }
 
   /* Serialize / deserialize */
@@ -697,11 +697,12 @@ int bitmap64FuseUnitTest(void) {
   ndpi_bitmap64_fuse *bf = ndpi_bitmap64_fuse_alloc();
   assert(bf != NULL);
 
-  /* Add values */
+  /* Add values including a value exceeding 32-bit range to test 64-bit support */
   assert(ndpi_bitmap64_fuse_set(bf, 1) == true);
   assert(ndpi_bitmap64_fuse_set(bf, 42) == true);
   assert(ndpi_bitmap64_fuse_set(bf, 1000) == true);
   assert(ndpi_bitmap64_fuse_set(bf, UINT32_MAX) == true);
+  assert(ndpi_bitmap64_fuse_set(bf, 0x100000000ULL) == true); /* > 32-bit range */
 
   /* Must compress before query */
   assert(ndpi_bitmap64_fuse_compress(bf) == true);
@@ -711,6 +712,7 @@ int bitmap64FuseUnitTest(void) {
   assert(ndpi_bitmap64_fuse_isset(bf, 42) == true);
   assert(ndpi_bitmap64_fuse_isset(bf, 1000) == true);
   assert(ndpi_bitmap64_fuse_isset(bf, UINT32_MAX) == true);
+  assert(ndpi_bitmap64_fuse_isset(bf, 0x100000000ULL) == true);
   assert(ndpi_bitmap64_fuse_isset(bf, 2) == false);
   assert(ndpi_bitmap64_fuse_isset(bf, 999) == false);
 
