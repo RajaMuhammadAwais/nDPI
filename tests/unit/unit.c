@@ -38,6 +38,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <stdint.h>
 #include <search.h>
 #include <pcap.h>
 #include <signal.h>
@@ -373,6 +374,552 @@ int serializeProtoUnitTest(void)
 
 /* *********************************************** */
 
+int stringUtilsUnitTest(void) {
+  /* ndpi_strnstr */
+  assert(ndpi_strnstr("hello world", "world", 11) != NULL);
+  assert(ndpi_strnstr("hello world", "xyz", 11) == NULL);
+  assert(ndpi_strnstr("hello world", "world", 7) == NULL); /* needle past len */
+  assert(ndpi_strnstr("hello", "", 5) != NULL);            /* empty needle */
+  assert(ndpi_strnstr("hello", "hello", 5) != NULL);       /* full match */
+  assert(ndpi_strnstr("aaa", "aaaa", 3) == NULL);          /* needle longer than haystack */
+
+  /* ndpi_strncasestr */
+  assert(ndpi_strncasestr("Hello World", "world", 11) != NULL);
+  assert(ndpi_strncasestr("Hello World", "HELLO", 11) != NULL);
+  assert(ndpi_strncasestr("Hello World", "xyz", 11) == NULL);
+
+  /* ndpi_strip_leading_trailing_spaces */
+  {
+    char buf1[] = "  hello  ";
+    int len1 = strlen(buf1);
+    char *r1 = ndpi_strip_leading_trailing_spaces(buf1, &len1);
+    assert(strncmp(r1, "hello", len1) == 0);
+    assert(len1 == 5);
+
+    char buf2[] = "no spaces";
+    int len2 = strlen(buf2);
+    char *r2 = ndpi_strip_leading_trailing_spaces(buf2, &len2);
+    assert(strncmp(r2, "no spaces", len2) == 0);
+    assert(len2 == 9);
+
+    char buf3[] = "   ";
+    int len3 = strlen(buf3);
+    ndpi_strip_leading_trailing_spaces(buf3, &len3);
+    assert(len3 == 0);
+  }
+
+  /* ndpi_check_punycode_string */
+  assert(ndpi_check_punycode_string("xn--nxasmq6b.com", 16) == 1);
+  assert(ndpi_check_punycode_string("google.com", 10) == 0);
+  assert(ndpi_check_punycode_string("xn--", 4) == 1); /* minimal valid punycode prefix */
+  assert(ndpi_check_punycode_string("abc", 3) == 0);  /* too short to contain "xn--" */
+
+  printf("%30s                      OK\n", __func__);
+  return 0;
+}
+
+/* *********************************************** */
+
+int hashFunctionsUnitTest(void) {
+  /* ndpi_hash_string: same input -> same output */
+  assert(ndpi_hash_string("hello") == ndpi_hash_string("hello"));
+  assert(ndpi_hash_string("hello") != ndpi_hash_string("world"));
+  assert(ndpi_hash_string("") == ndpi_hash_string(""));
+
+  /* ndpi_hash_string_len */
+  assert(ndpi_hash_string_len("hello", 5) == ndpi_hash_string_len("hello", 5));
+  assert(ndpi_hash_string_len("hello", 3) != ndpi_hash_string_len("hello", 5));
+
+  /* ndpi_quick_hash */
+  assert(ndpi_quick_hash((const unsigned char *)"test", 4) ==
+         ndpi_quick_hash((const unsigned char *)"test", 4));
+  assert(ndpi_quick_hash((const unsigned char *)"test", 4) !=
+         ndpi_quick_hash((const unsigned char *)"TEST", 4));
+
+  /* ndpi_murmur_hash */
+  assert(ndpi_murmur_hash("hello", 5) == ndpi_murmur_hash("hello", 5));
+  assert(ndpi_murmur_hash("hello", 5) != ndpi_murmur_hash("world", 5));
+
+  /* ndpi_nearest_power_of_two */
+  assert(ndpi_nearest_power_of_two(1) == 1);
+  assert(ndpi_nearest_power_of_two(2) == 2);
+  assert(ndpi_nearest_power_of_two(3) == 4);
+  assert(ndpi_nearest_power_of_two(5) == 8);
+  assert(ndpi_nearest_power_of_two(8) == 8);
+  assert(ndpi_nearest_power_of_two(9) == 16);
+  assert(ndpi_nearest_power_of_two(1024) == 1024);
+  assert(ndpi_nearest_power_of_two(1025) == 2048);
+
+  printf("%30s                      OK\n", __func__);
+  return 0;
+}
+
+/* *********************************************** */
+
+static int walk_count = 0;
+static void hash_walk_cb(char *key, u_int64_t value64, void *data) {
+  (void)key;
+  (void)value64;
+  (void)data;
+  walk_count++;
+}
+
+int strHashMapUnitTest(void) {
+  ndpi_str_hash *h = NULL;
+  u_int64_t val = 0;
+
+  /* Init */
+  assert(ndpi_hash_init(&h) == 0);
+  assert(h != NULL);
+
+  /* Add entries */
+  assert(ndpi_hash_add_entry(&h, (char *)"key1", 4, 100, NULL) == 0);
+  assert(ndpi_hash_add_entry(&h, (char *)"key2", 4, 200, NULL) == 0);
+  assert(ndpi_hash_add_entry(&h, (char *)"key3", 4, 300, NULL) == 0);
+
+  /* Find entries */
+  assert(ndpi_hash_find_entry(h, "key1", 4, &val) == 0);
+  assert(val == 100);
+  assert(ndpi_hash_find_entry(h, "key2", 4, &val) == 0);
+  assert(val == 200);
+  assert(ndpi_hash_find_entry(h, "key3", 4, &val) == 0);
+  assert(val == 300);
+
+  /* Non-existent entry */
+  assert(ndpi_hash_find_entry(h, "nokey", 5, &val) != 0);
+
+  /* Walk */
+  walk_count = 0;
+  ndpi_hash_walk(&h, hash_walk_cb, NULL);
+  assert(walk_count == 3);
+
+  /* Overwrite existing key: returns 1 (already present) and updates value */
+  assert(ndpi_hash_add_entry(&h, (char *)"key1", 4, 999, NULL) == 1);
+  assert(ndpi_hash_find_entry(h, "key1", 4, &val) == 0);
+  assert(val == 999);
+
+  /* Free */
+  ndpi_hash_free(&h);
+  assert(h == NULL);
+
+  printf("%30s                      OK\n", __func__);
+  return 0;
+}
+
+/* *********************************************** */
+
+int dataAnalysisUnitTest(void) {
+  struct ndpi_analyze_struct *s;
+  float avg, var, stddev;
+  u_int64_t mn, mx, last;
+
+  /* Allocate with a sliding window of 8 */
+  s = ndpi_alloc_data_analysis(8);
+  assert(s != NULL);
+
+  /* Populate with known values: 2, 4, 4, 4, 5, 5, 7, 9 (classic variance example) */
+  ndpi_data_add_value(s, 2);
+  ndpi_data_add_value(s, 4);
+  ndpi_data_add_value(s, 4);
+  ndpi_data_add_value(s, 4);
+  ndpi_data_add_value(s, 5);
+  ndpi_data_add_value(s, 5);
+  ndpi_data_add_value(s, 7);
+  ndpi_data_add_value(s, 9);
+
+  /* mean = 5, variance = 4, stddev = 2 */
+  avg = ndpi_data_average(s);
+  assert(avg >= 4.9f && avg <= 5.1f);
+
+  var = ndpi_data_variance(s);
+  assert(var >= 3.8f && var <= 4.2f);
+
+  stddev = ndpi_data_stddev(s);
+  assert(stddev >= 1.9f && stddev <= 2.1f);
+
+  mn = ndpi_data_min(s);
+  mx = ndpi_data_max(s);
+  last = ndpi_data_last(s);
+  assert(mn == 2);
+  assert(mx == 9);
+  assert(last == 9);
+
+  /* Window average (last 8 values same as all values here) */
+  float wavg = ndpi_data_window_average(s);
+  assert(wavg >= 4.9f && wavg <= 5.1f);
+
+  /* Reset and verify state */
+  ndpi_reset_data_analysis(s);
+  ndpi_data_add_value(s, 10);
+  assert(ndpi_data_min(s) == 10);
+  assert(ndpi_data_max(s) == 10);
+  assert(ndpi_data_last(s) == 10);
+
+  ndpi_free_data_analysis(s, 1);
+
+  /* ndpi_alloc_data_analysis_from_series */
+  u_int32_t series[] = {1, 2, 3, 4, 5};
+  s = ndpi_alloc_data_analysis_from_series(series, 5);
+  assert(s != NULL);
+  avg = ndpi_data_average(s);
+  assert(avg >= 2.9f && avg <= 3.1f);
+  ndpi_free_data_analysis(s, 1);
+
+  /* ndpi_data_ratio and ndpi_data_ratio2str */
+  float ratio;
+  ratio = ndpi_data_ratio(0, 0);
+  assert(ratio == 0.0f);
+
+  ratio = ndpi_data_ratio(100, 0);  /* pure upload */
+  assert(ratio > 0.2f);
+  assert(strcmp(ndpi_data_ratio2str(ratio), "Upload") == 0);
+
+  ratio = ndpi_data_ratio(0, 100);  /* pure download */
+  assert(ratio < -0.2f);
+  assert(strcmp(ndpi_data_ratio2str(ratio), "Download") == 0);
+
+  ratio = ndpi_data_ratio(50, 50);  /* mixed */
+  assert(ratio == 0.0f);
+  assert(strcmp(ndpi_data_ratio2str(ratio), "Mixed") == 0);
+
+  printf("%30s                      OK\n", __func__);
+  return 0;
+}
+
+/* *********************************************** */
+
+int bitmapUnitTest(void) {
+  ndpi_bitmap *a, *b, *c;
+  u_int64_t val;
+
+  /* Basic alloc and empty check */
+  a = ndpi_bitmap_alloc();
+  assert(a != NULL);
+  assert(ndpi_bitmap_is_empty(a) == true);
+  assert(ndpi_bitmap_cardinality(a) == 0);
+
+  /* Set and test */
+  ndpi_bitmap_set(a, 1);
+  ndpi_bitmap_set(a, 100);
+  ndpi_bitmap_set(a, 1000);
+  assert(ndpi_bitmap_isset(a, 1) == true);
+  assert(ndpi_bitmap_isset(a, 100) == true);
+  assert(ndpi_bitmap_isset(a, 1000) == true);
+  assert(ndpi_bitmap_isset(a, 2) == false);
+  assert(ndpi_bitmap_cardinality(a) == 3);
+  assert(ndpi_bitmap_is_empty(a) == false);
+
+  /* Unset */
+  ndpi_bitmap_unset(a, 100);
+  assert(ndpi_bitmap_isset(a, 100) == false);
+  assert(ndpi_bitmap_cardinality(a) == 2);
+
+  /* Duplicate set should not increase cardinality */
+  ndpi_bitmap_set(a, 1);
+  assert(ndpi_bitmap_cardinality(a) == 2);
+
+  /* Copy */
+  c = ndpi_bitmap_copy(a);
+  assert(c != NULL);
+  assert(ndpi_bitmap_cardinality(c) == 2);
+  assert(ndpi_bitmap_isset(c, 1) == true);
+  assert(ndpi_bitmap_isset(c, 1000) == true);
+
+  /* OR: a={1,1000}, b={2,1000} -> a|b = {1,2,1000} */
+  b = ndpi_bitmap_alloc();
+  assert(b != NULL);
+  ndpi_bitmap_set(b, 2);
+  ndpi_bitmap_set(b, 1000);
+  ndpi_bitmap_or(a, b);
+  assert(ndpi_bitmap_isset(a, 1) == true);
+  assert(ndpi_bitmap_isset(a, 2) == true);
+  assert(ndpi_bitmap_isset(a, 1000) == true);
+  assert(ndpi_bitmap_cardinality(a) == 3);
+
+  /* AND: a={1,2,1000} & c={1,1000} -> {1,1000} */
+  ndpi_bitmap_and(a, c);
+  assert(ndpi_bitmap_isset(a, 1) == true);
+  assert(ndpi_bitmap_isset(a, 2) == false);
+  assert(ndpi_bitmap_isset(a, 1000) == true);
+  assert(ndpi_bitmap_cardinality(a) == 2);
+
+  /* XOR: a={1,1000} ^ b={2,1000} -> {1,2} */
+  ndpi_bitmap_xor(a, b);
+  assert(ndpi_bitmap_isset(a, 1) == true);
+  assert(ndpi_bitmap_isset(a, 2) == true);
+  assert(ndpi_bitmap_isset(a, 1000) == false);
+  assert(ndpi_bitmap_cardinality(a) == 2);
+
+  /* Iterator */
+  ndpi_bitmap_free(a);
+  a = ndpi_bitmap_alloc();
+  ndpi_bitmap_set(a, 10);
+  ndpi_bitmap_set(a, 20);
+  ndpi_bitmap_set(a, 30);
+  {
+    ndpi_bitmap_iterator *it = ndpi_bitmap_iterator_alloc(a);
+    assert(it != NULL);
+    u_int64_t count = 0;
+    while(ndpi_bitmap_iterator_next(it, &val)) {
+      assert(val == 10 || val == 20 || val == 30);
+      count++;
+    }
+    assert(count == 3);
+    ndpi_bitmap_iterator_free((ndpi_bitmap *)it);
+  }
+
+  /* Serialize / deserialize */
+  {
+    char *buf = NULL;
+    size_t buf_len = ndpi_bitmap_serialize(a, &buf);
+    assert(buf != NULL && buf_len > 0);
+    ndpi_bitmap *d = ndpi_bitmap_deserialize(buf, buf_len);
+    assert(d != NULL);
+    assert(ndpi_bitmap_isset(d, 10) == true);
+    assert(ndpi_bitmap_isset(d, 20) == true);
+    assert(ndpi_bitmap_isset(d, 30) == true);
+    assert(ndpi_bitmap_cardinality(d) == 3);
+    ndpi_bitmap_free(d);
+    free(buf);
+  }
+
+  ndpi_bitmap_free(a);
+  ndpi_bitmap_free(b);
+  ndpi_bitmap_free(c);
+
+  printf("%30s                      OK\n", __func__);
+  return 0;
+}
+
+/* *********************************************** */
+
+int bitmap64FuseUnitTest(void) {
+  ndpi_bitmap64_fuse *bf = ndpi_bitmap64_fuse_alloc();
+  assert(bf != NULL);
+
+  /* Add values */
+  assert(ndpi_bitmap64_fuse_set(bf, 1) == true);
+  assert(ndpi_bitmap64_fuse_set(bf, 42) == true);
+  assert(ndpi_bitmap64_fuse_set(bf, 1000) == true);
+  assert(ndpi_bitmap64_fuse_set(bf, UINT32_MAX) == true);
+
+  /* Must compress before query */
+  assert(ndpi_bitmap64_fuse_compress(bf) == true);
+
+  /* Query after compression */
+  assert(ndpi_bitmap64_fuse_isset(bf, 1) == true);
+  assert(ndpi_bitmap64_fuse_isset(bf, 42) == true);
+  assert(ndpi_bitmap64_fuse_isset(bf, 1000) == true);
+  assert(ndpi_bitmap64_fuse_isset(bf, UINT32_MAX) == true);
+  assert(ndpi_bitmap64_fuse_isset(bf, 2) == false);
+  assert(ndpi_bitmap64_fuse_isset(bf, 999) == false);
+
+  /* Size should be non-zero after compression */
+  assert(ndpi_bitmap64_fuse_size(bf) > 0);
+
+  ndpi_bitmap64_fuse_free(bf);
+
+  /* Empty bitmap: compress on empty should be handled gracefully */
+  ndpi_bitmap64_fuse *bf2 = ndpi_bitmap64_fuse_alloc();
+  assert(bf2 != NULL);
+  assert(ndpi_bitmap64_fuse_compress(bf2) == true);
+  assert(ndpi_bitmap64_fuse_isset(bf2, 0) == false);
+  ndpi_bitmap64_fuse_free(bf2);
+
+  printf("%30s                      OK\n", __func__);
+  return 0;
+}
+
+/* *********************************************** */
+
+int riskUtilsUnitTest(void) {
+  ndpi_risk_enum risk;
+  u_int16_t client_score, server_score;
+  ndpi_risk risk_bits;
+
+  /* ndpi_risk2str: verify all risk values return non-NULL strings */
+  for(risk = NDPI_NO_RISK; risk < NDPI_MAX_RISK; risk++) {
+    const char *s = ndpi_risk2str(risk);
+    assert(s != NULL && strlen(s) > 0);
+  }
+
+  /* ndpi_risk2score: verify specific risk has non-zero total score */
+  risk_bits = 0;
+  NDPI_SET_BIT(risk_bits, NDPI_TLS_SELFSIGNED_CERTIFICATE);
+  u_int16_t total = ndpi_risk2score(risk_bits, &client_score, &server_score);
+  assert(total > 0);
+  assert(client_score + server_score == total);
+
+  /* No risk -> zero score */
+  risk_bits = 0;
+  total = ndpi_risk2score(risk_bits, &client_score, &server_score);
+  assert(total == 0);
+  assert(client_score == 0);
+  assert(server_score == 0);
+
+  /* Multiple risks combine */
+  risk_bits = 0;
+  NDPI_SET_BIT(risk_bits, NDPI_TLS_SELFSIGNED_CERTIFICATE);
+  u_int16_t score_single = ndpi_risk2score(risk_bits, &client_score, &server_score);
+
+  risk_bits = 0;
+  NDPI_SET_BIT(risk_bits, NDPI_TLS_SELFSIGNED_CERTIFICATE);
+  NDPI_SET_BIT(risk_bits, NDPI_TLS_OBSOLETE_VERSION);
+  u_int16_t score_multi = ndpi_risk2score(risk_bits, &client_score, &server_score);
+  assert(score_multi > score_single);
+
+  printf("%30s                      OK\n", __func__);
+  return 0;
+}
+
+/* *********************************************** */
+
+int cryptoUnitTest(void) {
+  /* ndpi_md5: known hash for empty string */
+  {
+    u_char hash[16];
+    /* MD5("") = d41d8cd98f00b204e9800998ecf8427e */
+    u_char expected[] = {
+      0xd4, 0x1d, 0x8c, 0xd9, 0x8f, 0x00, 0xb2, 0x04,
+      0xe9, 0x80, 0x09, 0x98, 0xec, 0xf8, 0x42, 0x7e
+    };
+    ndpi_md5((const u_char *)"", 0, hash);
+    assert(memcmp(hash, expected, 16) == 0);
+
+    /* MD5("abc") = 900150983cd24fb0d6963f7d28e17f72 */
+    u_char expected_abc[] = {
+      0x90, 0x01, 0x50, 0x98, 0x3c, 0xd2, 0x4f, 0xb0,
+      0xd6, 0x96, 0x3f, 0x7d, 0x28, 0xe1, 0x7f, 0x72
+    };
+    ndpi_md5((const u_char *)"abc", 3, hash);
+    assert(memcmp(hash, expected_abc, 16) == 0);
+  }
+
+  /* ndpi_sha256: known hash for empty string */
+  {
+    u_int8_t hash[32];
+    /* SHA256("") = e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 */
+    u_int8_t expected[] = {
+      0xe3, 0xb0, 0xc4, 0x42, 0x98, 0xfc, 0x1c, 0x14,
+      0x9a, 0xfb, 0xf4, 0xc8, 0x99, 0x6f, 0xb9, 0x24,
+      0x27, 0xae, 0x41, 0xe4, 0x64, 0x9b, 0x93, 0x4c,
+      0xa4, 0x95, 0x99, 0x1b, 0x78, 0x52, 0xb8, 0x55
+    };
+    ndpi_sha256((const u_char *)"", 0, hash);
+    assert(memcmp(hash, expected, 32) == 0);
+  }
+
+  /* ndpi_crc32: deterministic output for same input */
+  {
+    u_int32_t crc1 = ndpi_crc32("hello", 5, 0);
+    u_int32_t crc2 = ndpi_crc32("hello", 5, 0);
+    assert(crc1 == crc2);
+    u_int32_t crc3 = ndpi_crc32("world", 5, 0);
+    assert(crc1 != crc3);
+    /* CRC32("") = 0 when starting from 0 */
+    u_int32_t crc_empty = ndpi_crc32("", 0, 0);
+    assert(crc_empty == 0);
+  }
+
+  /* ndpi_crc16_ccit: deterministic */
+  {
+    u_int16_t c1 = ndpi_crc16_ccit("hello", 5);
+    u_int16_t c2 = ndpi_crc16_ccit("hello", 5);
+    assert(c1 == c2);
+    u_int16_t c3 = ndpi_crc16_ccit("world", 5);
+    assert(c1 != c3);
+  }
+
+  /* ndpi_hex2bin and ndpi_bin2hex round trip */
+  {
+    u_char binary[4];
+    u_char hex_out[9]; /* 4 bytes * 2 hex chars + '\0' */
+
+    /* Decode "deadbeef" */
+    u_int decoded = ndpi_hex2bin(binary, sizeof(binary), (u_char *)"deadbeef", 8);
+    assert(decoded == 4);
+    assert(binary[0] == 0xde);
+    assert(binary[1] == 0xad);
+    assert(binary[2] == 0xbe);
+    assert(binary[3] == 0xef);
+
+    /* Encode back */
+    u_int encoded = ndpi_bin2hex(hex_out, sizeof(hex_out), binary, 4);
+    assert(encoded == 8);
+    hex_out[8] = '\0';
+    assert(strncasecmp((char *)hex_out, "deadbeef", 8) == 0);
+  }
+
+  printf("%30s                      OK\n", __func__);
+  return 0;
+}
+
+/* *********************************************** */
+
+int protocolModuleUnitTest(void) {
+  /* API version should match */
+  assert(ndpi_get_api_version() == NDPI_API_VERSION);
+
+  /* ndpi_revision: non-NULL, non-empty string */
+  char *rev = ndpi_revision();
+  assert(rev != NULL && strlen(rev) > 0);
+
+  /* ndpi_get_num_protocols: should be > 0 */
+  u_int num = ndpi_get_num_protocols(ndpi_info_mod);
+  assert(num > 0);
+
+  /* ndpi_get_proto_name for UNKNOWN */
+  char *name = ndpi_get_proto_name(ndpi_info_mod, NDPI_PROTOCOL_UNKNOWN);
+  assert(name != NULL);
+
+  /* ndpi_get_proto_name for TLS (well-known protocol) */
+  name = ndpi_get_proto_name(ndpi_info_mod, NDPI_PROTOCOL_TLS);
+  assert(name != NULL && strlen(name) > 0);
+
+  /* ndpi_get_proto_breed */
+  ndpi_protocol_breed_t breed = ndpi_get_proto_breed(ndpi_info_mod, NDPI_PROTOCOL_TLS);
+  assert(breed >= NDPI_PROTOCOL_UNRATED && breed <= NDPI_PROTOCOL_TRACKER_ADS);
+
+  /* ndpi_get_proto_breed_name: non-NULL for all valid breeds */
+  for(int i = NDPI_PROTOCOL_UNRATED; i <= NDPI_PROTOCOL_TRACKER_ADS; i++) {
+    char *bname = ndpi_get_proto_breed_name((ndpi_protocol_breed_t)i);
+    assert(bname != NULL && strlen(bname) > 0);
+  }
+
+  /* ndpi_get_breed_by_name round-trip */
+  char *bname = ndpi_get_proto_breed_name(NDPI_PROTOCOL_SAFE);
+  assert(bname != NULL);
+  ndpi_protocol_breed_t b2 = ndpi_get_breed_by_name(bname);
+  assert(b2 == NDPI_PROTOCOL_SAFE);
+
+  /* ndpi_get_proto_category */
+  {
+    ndpi_protocol proto;
+    memset(&proto, 0, sizeof(proto));
+    proto.proto.master_protocol = NDPI_PROTOCOL_UNKNOWN;
+    proto.proto.app_protocol = NDPI_PROTOCOL_TLS;
+    ndpi_protocol_category_t cat = ndpi_get_proto_category(ndpi_info_mod, proto);
+    assert((int)cat >= 0);
+
+    /* ndpi_category_get_name: non-NULL */
+    const char *cat_name = ndpi_category_get_name(ndpi_info_mod, cat);
+    assert(cat_name != NULL);
+  }
+
+  /* ndpi_is_subprotocol_informative */
+  u_int8_t inf = ndpi_is_subprotocol_informative(ndpi_info_mod, NDPI_PROTOCOL_TLS);
+  assert(inf == 0 || inf == 1);
+
+  /* ndpi_detection_get_sizeof_ndpi_flow_struct: reasonable size */
+  u_int32_t flow_sz = ndpi_detection_get_sizeof_ndpi_flow_struct();
+  assert(flow_sz > 0 && flow_sz < 1024 * 1024); /* sanity check */
+
+  printf("%30s                      OK\n", __func__);
+  return 0;
+}
+
+/* *********************************************** */
+
 int main(int argc, char **argv) {
 #ifndef WIN32
   int c;
@@ -416,6 +963,17 @@ int main(int argc, char **argv) {
   /* Tests */
   if (serializerUnitTest() != 0) return -1;
   if (serializeProtoUnitTest() != 0) return -1;
+  if (stringUtilsUnitTest() != 0) return -1;
+  if (hashFunctionsUnitTest() != 0) return -1;
+  if (strHashMapUnitTest() != 0) return -1;
+  if (dataAnalysisUnitTest() != 0) return -1;
+  if (bitmapUnitTest() != 0) return -1;
+  if (bitmap64FuseUnitTest() != 0) return -1;
+  if (riskUtilsUnitTest() != 0) return -1;
+  if (cryptoUnitTest() != 0) return -1;
+  if (protocolModuleUnitTest() != 0) return -1;
+
+  ndpi_exit_detection_module(ndpi_info_mod);
 
   return 0;
 }
