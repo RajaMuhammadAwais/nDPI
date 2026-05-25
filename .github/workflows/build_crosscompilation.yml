@@ -10,13 +10,10 @@ on:
   release:
     types: [created]
   workflow_dispatch:
-  schedule:
-    #At the end of every day
-    - cron: '0 0 * * *'
 
 jobs:
   crosscompilation:
-    name: Cross-compilation (AArch64 on ubuntu-latest x86_64)
+    name: AArch64 on ubuntu-latest x86_64
     runs-on: ubuntu-latest
     env:
       CFLAGS: -Werror -DNDPI_EXTENDED_SANITY_CHECKS
@@ -27,3 +24,4 @@ jobs:
       - name: Run script
         run: |
           ./utils/cross-compile-test.sh --full
+          #No real tests, only `ndpiReader -H`
