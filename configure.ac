@@ -123,11 +123,11 @@ AS_IF([test "x${enable_fuzztargets}" = "xyes" -a "x${enable_static}" = "xno"],[
   AC_MSG_ERROR([--enable-fuzztargets requires static library. Cannot use with --disable-static.])
 ])
 
-PKG_PROG_PKG_CONFIG
-
 # Detect build and host system for cross-compilation support
 # Must be called early, before AC_PROG_CC
 AC_CANONICAL_HOST
+
+PKG_PROG_PKG_CONFIG
 
 # Prefer clang on Darwin if user didn't explicitly set CC.
 # Must be done before AC_PROG_CC so the preference takes effect.
@@ -139,7 +139,6 @@ case "$host_os" in
 esac
 
 AC_PROG_CC
-AC_PROG_CPP_WERROR
 AC_C_INLINE
 
 case "$host_os" in
