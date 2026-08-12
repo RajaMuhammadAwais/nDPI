@@ -964,10 +964,11 @@ static void ndpi_check_http_url(struct ndpi_detection_module_struct *ndpi_struct
     r = NDPI_POSSIBLE_EXPLOIT;
     snprintf(msg, sizeof(msg), "URL starting with dot [%s]", url);
   } else {
+    if(ndpi_check_dga_url_path(ndpi_struct, flow, url))
+      return;
     r = ndpi_validate_url(ndpi_struct, flow, url);
     return;
   }
-
   ndpi_set_risk(ndpi_struct, flow, r, msg);
 }
 
