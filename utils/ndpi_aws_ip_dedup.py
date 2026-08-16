@@ -63,9 +63,11 @@ def resolve_path(name, path):
         sys.exit(1)
     return real
 
+# Every CLI-supplied path is validated before any filesystem access
+# (GitHub issue #3062, SonarCloud pythonsecurity:S8707).
 src = resolve_path("input", src)
-os.makedirs(outdir, exist_ok=True)
 outdir = resolve_path("output", outdir)
+os.makedirs(outdir, exist_ok=True)
 data = json.load(open(src))
 
 def per_prefix(prefixes, key):
