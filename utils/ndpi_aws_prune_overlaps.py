@@ -51,6 +51,19 @@ if len(sys.argv) not in (2, 3):
 
 merged_dir = sys.argv[1]
 
+def resolve_path(name, path):
+    """Resolve a CLI-supplied path and make sure it stays inside the
+    current working directory (GitHub issue #3062, SonarCloud
+    "path traversal on new code")."""
+    real = os.path.realpath(path)
+    cwd = os.path.realpath(os.getcwd())
+    if not real.startswith(cwd + os.sep) and real != cwd:
+        print(f"{name}: {path} resolves outside the working directory")
+        sys.exit(1)
+    return real
+
+merged_dir = resolve_path("merged_dir", merged_dir)
+
 # Collect all networks of higher-precedence lists as we walk the chain.
 protected = []
 
@@ -65,6 +78,11 @@ for kind in ("." + suffix, "." + suffix + "6"):
             continue
         nets = [ipaddress.ip_network(line.strip())
                 for line in open(path) if line.strip()]
+        if not os.path.realpath(path).startswith(
+                os.path.realpath(merged_dir) + os.sep):
+            print(f"prune: skip {path} outside the merged directory",
+                  file=sys.stderr)
+            continue
         print(f"prune: {path}: {len(nets)} entries",
               file=sys.stderr)
         kept = []
@@ -81,6 +99,9 @@ for kind in ("." + suffix, "." + suffix + "6"):
         if removed:
             print(f"pruned {removed} covered entries from {svc}{kind}",
                   file=sys.stderr)
+        if not os.path.realpath(path).startswith(
+                os.path.realpath(merged_dir) + os.sep):
+            continue
         with open(path, "w") as fp:
             for net in sorted(kept,
                               key=lambda n: (n.network_address.packed,

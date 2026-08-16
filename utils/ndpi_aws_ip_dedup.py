@@ -48,6 +48,24 @@ if len(sys.argv) != 3:
     sys.exit(1)
 
 src, outdir = sys.argv[1], sys.argv[2]
+
+def resolve_path(name, path):
+    """Resolve a CLI-supplied path and make sure it stays inside the
+    current working directory (GitHub issue #3062, SonarCloud
+    "path traversal on new code")."""
+    real = os.path.realpath(path)
+    cwd = os.path.realpath(os.getcwd())
+    if not real.startswith(cwd + os.sep) and real != cwd:
+        print(f"{name}: {path} resolves outside the working directory")
+        sys.exit(1)
+    if not os.path.exists(real):
+        print(f"{name}: {path} does not exist")
+        sys.exit(1)
+    return real
+
+src = resolve_path("input", src)
+os.makedirs(outdir, exist_ok=True)
+outdir = resolve_path("output", outdir)
 data = json.load(open(src))
 
 def per_prefix(prefixes, key):
