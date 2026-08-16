@@ -44,9 +44,18 @@ PRECEDENCE = [
     "AMAZON_AWS",
 ]
 
-suffix = "" if len(sys.argv) < 3 else sys.argv[2]
 if len(sys.argv) not in (2, 3):
     print("Usage: ndpi_aws_prune_overlaps.py <merged_dir> [suffix]")
+    sys.exit(1)
+
+# The suffix only ever takes two trusted values: empty (default) or
+# "m" (the mergeipaddrlist.py output) for the four file pairs below.
+# Reject anything else before it can reach the filesystem
+# (GitHub issue #3062, SonarCloud pythonsecurity:S8707).
+KNOWN_SUFFIXES = ("", "m")
+suffix = sys.argv[2] if len(sys.argv) == 3 else ""
+if suffix not in KNOWN_SUFFIXES:
+    print(f"unsupported suffix {suffix!r} (expected '' or 'm')")
     sys.exit(1)
 
 merged_dir = sys.argv[1]
@@ -54,7 +63,7 @@ merged_dir = sys.argv[1]
 def resolve_path(name, path):
     """Resolve a CLI-supplied path and make sure it stays inside the
     current working directory (GitHub issue #3062, SonarCloud
-    "path traversal on new code")."""
+    pythonsecurity:S8707)."""
     real = os.path.realpath(path)
     cwd = os.path.realpath(os.getcwd())
     if not real.startswith(cwd + os.sep) and real != cwd:
@@ -72,17 +81,22 @@ def covered_by(net, others):
 
 for kind in ("." + suffix, "." + suffix + "6"):
     for svc in PRECEDENCE:
-        path = os.path.join(merged_dir, f"{svc}{kind}")
+        path = os.path.realpath(os.path.join(merged_dir, f"{svc}{kind}"))
+        base = os.path.realpath(merged_dir) + os.sep
+        # svc comes from the PRECEDENCE constant and kind is a known
+        # value, so a path that escapes the merged directory is only
+        # possible when merged_dir itself is hostile; catch it before
+        # touching the filesystem (GitHub issue #3062,
+        # SonarCloud pythonsecurity:S8707).
+        if not path.startswith(base):
+            print(f"prune: skip {path} outside the merged directory",
+                  file=sys.stderr)
+            continue
         if not os.path.exists(path):
             print(f"prune: skip missing {path}", file=sys.stderr)
             continue
         nets = [ipaddress.ip_network(line.strip())
                 for line in open(path) if line.strip()]
-        if not os.path.realpath(path).startswith(
-                os.path.realpath(merged_dir) + os.sep):
-            print(f"prune: skip {path} outside the merged directory",
-                  file=sys.stderr)
-            continue
         print(f"prune: {path}: {len(nets)} entries",
               file=sys.stderr)
         kept = []
@@ -99,9 +113,6 @@ for kind in ("." + suffix, "." + suffix + "6"):
         if removed:
             print(f"pruned {removed} covered entries from {svc}{kind}",
                   file=sys.stderr)
-        if not os.path.realpath(path).startswith(
-                os.path.realpath(merged_dir) + os.sep):
-            continue
         with open(path, "w") as fp:
             for net in sorted(kept,
                               key=lambda n: (n.network_address.packed,
