@@ -66,6 +66,8 @@ References: `RFC8010: <https://datatracker.ietf.org/doc/html/rfc8010>`_
 ====================
 HTTP (Hypertext Transfer Protocol) is the foundation of data communication for the World Wide Web.
 
+The `http.dga_url` configuration parameter controls detection of DGA-like patterns in HTTP URL paths. It is enabled by default and can be disabled when URL-path DGA risk detection is not required.
+
 References: `RFC2616: <https://datatracker.ietf.org/doc/html/rfc2616>`_, `RFC7230: <https://datatracker.ietf.org/doc/html/rfc7230>`_
 
 

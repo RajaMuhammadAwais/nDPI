@@ -340,6 +340,7 @@ struct ndpi_detection_module_config_struct {
 
   int http_parse_response_enabled;
   int http_subclassification_enabled;
+  int http_dga_url_enabled;
 
   int ookla_aggressiveness;
 

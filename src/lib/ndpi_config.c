@@ -180,6 +180,7 @@ const struct cfg_param cfg_params[] = {
 
   { "http",          "process_response",                        "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(http_parse_response_enabled), NULL },
   { "http",          "subclassification",                       "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(http_subclassification_enabled), NULL },
+  { "http",          "dga_url",                                 "enable", NULL, NULL, CFG_PARAM_ENABLE_DISABLE, __OFF(http_dga_url_enabled), NULL },
 
   { "ookla",         "dpi.aggressiveness",                      "0x01", "0", "1", CFG_PARAM_INT, __OFF(ookla_aggressiveness), NULL },
 
