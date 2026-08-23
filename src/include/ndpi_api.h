@@ -1396,7 +1396,7 @@ extern "C" {
 			  struct ndpi_flow_struct *flow,
 			  char *name, u_int8_t is_hostname, u_int8_t check_subproto,
 			  u_int8_t flow_fully_classified);
-  /* URL-path DGA (https://github.com/ntop/nDPI/issues/2089) */
+  /* URL-path DGA */
   int ndpi_check_dga_url_path(struct ndpi_detection_module_struct *ndpi_str,
 			      struct ndpi_flow_struct *flow, char *url);
 
