@@ -189,6 +189,8 @@ extern "C" {
    */
   u_int32_t ndpi_get_tot_allocated_memory(void);
 
+  void *ndpi_memdup(const uint8_t *orig, size_t len);
+
   /**
    * Remove leading and trailing whitespace from a string in-place.
    *
@@ -284,10 +286,13 @@ extern "C" {
    * in parallel
    *
    * @par g_ctx = global context associated to the new detection module; NULL if no global context is needed
+   * @par license_type = license under which you intend to use nDPI: it determines which
+   *                      dissectors (based on their own license) are loaded
    * @return  the initialized detection module
    *
    */
-  struct ndpi_detection_module_struct *ndpi_init_detection_module(struct ndpi_global_context *g_ctx);
+  struct ndpi_detection_module_struct *ndpi_init_detection_module(struct ndpi_global_context *g_ctx,
+								  enum ndpi_license_type license_type);
 
   /**
    * Completes the initialization (2nd step)
@@ -374,7 +379,8 @@ extern "C" {
 			      ndpi_protocol_qoe_category_t qoeCategory,
 			      ndpi_port_range *tcpDefPorts,
 			      ndpi_port_range *udpDefPorts,
-			      u_int8_t is_custom_protocol);
+			      u_int8_t is_custom_protocol,
+			      u_int8_t partialClassificationCanChange);
 
   /**
    * Set protocol ids mapping
@@ -1114,9 +1120,13 @@ extern "C" {
 					      u_int16_t user_proto_id);
   u_int16_t ndpi_map_ndpi_id_to_user_proto_id(struct ndpi_detection_module_struct *ndpi_str,
 					      u_int16_t ndpi_proto_id);
+  
+  bool ndpi_can_partial_proto_classification_change(struct ndpi_detection_module_struct *ndpi_struct,
+						    u_int16_t ndpi_proto_id);
 
   /* Tells to called on what l4 protocol given application protocol can be found */
-  ndpi_l4_proto_info ndpi_get_l4_proto_info(struct ndpi_detection_module_struct *ndpi_struct, u_int16_t ndpi_proto_id);
+  ndpi_l4_proto_info ndpi_get_l4_proto_info(struct ndpi_detection_module_struct *ndpi_struct,
+					    u_int16_t ndpi_proto_id);
   const char* ndpi_get_l4_proto_name(ndpi_l4_proto_info proto);
 
   u_int16_t ndpi_get_lower_proto(ndpi_master_app_protocol proto);

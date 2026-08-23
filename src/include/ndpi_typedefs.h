@@ -63,11 +63,18 @@ typedef unsigned int u_int;
 
 /* NDPI_LOG_LEVEL */
 typedef enum {
-	      NDPI_LOG_ERROR,
-	      NDPI_LOG_TRACE,
-	      NDPI_LOG_DEBUG,
-	      NDPI_LOG_DEBUG_EXTRA
+  NDPI_LOG_ERROR,
+  NDPI_LOG_TRACE,
+  NDPI_LOG_DEBUG,
+  NDPI_LOG_DEBUG_EXTRA
 } ndpi_log_level_t;
+
+/* License under which the nDPI library (and its dissectors) can be used */
+enum ndpi_license_type {
+  NDPI_LICENSE_NON_COMMERCIAL_LGPL = 0,
+  NDPI_LICENSE_COMMERCIAL_LGPL,
+  NDPI_LICENSE_COMMERCIAL_DUAL_LICENSE,
+};
 
 typedef enum {
   ndpi_multimedia_unknown_flow          = 0x00,
@@ -1302,7 +1309,8 @@ typedef enum {
 typedef struct ndpi_proto_defaults {
   char protoName[32];
   ndpi_protocol_category_t protoCategory;
-  u_int8_t isClearTextProto:1, isAppProtocol:1, isCustomProto:1, performIPcheck:1, _notused:4;
+  u_int8_t isClearTextProto:1, isAppProtocol:1, isCustomProto:1, performIPcheck:1,
+    partialClassificationCanChange:1, _notused:3;
   u_int16_t *subprotocols;
   u_int32_t subprotocol_count;
   u_int16_t protoId, dissector_idx;
