@@ -969,7 +969,6 @@ static void ndpi_check_http_url(struct ndpi_detection_module_struct *ndpi_struct
     r = ndpi_validate_url(ndpi_struct, flow, url);
     return;
   }
-
   ndpi_set_risk(ndpi_struct, flow, r, msg);
 }
 
