@@ -132,34 +132,37 @@
 #define NDPI_ARRAY_LENGTH(array) (sizeof(array) / sizeof((array)[0]))
 
 /* The get_uXX helpers return raw network packet bytes. */
+#ifndef NDPI_CFFI_PREPROCESSING
+#include <stdint.h>
 #include <string.h>
 
-#define get_u_int8_t(X,O)   (((const u_int8_t *)(X))[O])
+#define get_u_int8_t(X,O)   (((const uint8_t *)(X))[O])
 
-static inline u_int16_t ndpi_get_u_int16_t(const void *X, int O)
+static inline uint16_t ndpi_get_u_int16_t(const void *X, int O)
 {
-  u_int16_t value;
-  memcpy(&value, ((const u_int8_t *)X) + O, sizeof(value));
+  uint16_t value;
+  memcpy(&value, ((const uint8_t *)X) + O, sizeof(value));
   return value;
 }
 
-static inline u_int32_t ndpi_get_u_int32_t(const void *X, int O)
+static inline uint32_t ndpi_get_u_int32_t(const void *X, int O)
 {
-  u_int32_t value;
-  memcpy(&value, ((const u_int8_t *)X) + O, sizeof(value));
+  uint32_t value;
+  memcpy(&value, ((const uint8_t *)X) + O, sizeof(value));
   return value;
 }
 
-static inline u_int64_t ndpi_get_u_int64_t(const void *X, int O)
+static inline uint64_t ndpi_get_u_int64_t(const void *X, int O)
 {
-  u_int64_t value;
-  memcpy(&value, ((const u_int8_t *)X) + O, sizeof(value));
+  uint64_t value;
+  memcpy(&value, ((const uint8_t *)X) + O, sizeof(value));
   return value;
 }
 
 #define get_u_int16_t(X,O)  ndpi_get_u_int16_t((X), (O))
 #define get_u_int32_t(X,O)  ndpi_get_u_int32_t((X), (O))
 #define get_u_int64_t(X,O)  ndpi_get_u_int64_t((X), (O))
+#endif /* NDPI_CFFI_PREPROCESSING */
 
 /* new definitions to get little endian from network bytes */
 #define get_ul8(X,O) get_u_int8_t(X,O)
