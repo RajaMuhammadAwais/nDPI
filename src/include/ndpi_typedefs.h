@@ -1544,7 +1544,7 @@ typedef struct {
 #define ndpi_private_deserializer ndpi_private_serializer
 
 #ifdef NDPI_CFFI_PREPROCESSING
-typedef union { u_int64_t _alignment; char c[72]; } ndpi_serializer;
+typedef union { ndpi_private_serializer _alignment; char c[72]; } ndpi_serializer;
 #else
 typedef union { ndpi_private_serializer _alignment; char c[sizeof(ndpi_private_serializer)]; } ndpi_serializer;
 #endif
