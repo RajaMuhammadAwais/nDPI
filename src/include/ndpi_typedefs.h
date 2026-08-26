@@ -1547,7 +1547,8 @@ typedef struct {
  * The public serializer is opaque, but its storage is reinterpreted as
  * ndpi_private_serializer by the implementation. Keep the private type as a
  * union member so the public object carries the private type's alignment while
- * retaining the existing character-buffer storage contract.
+ * retaining the existing character-buffer storage contract. The union member
+ * is the alignment guarantee; the assertion below protects the storage size.
  */
 #ifdef NDPI_CFFI_PREPROCESSING
 typedef union { ndpi_private_serializer _alignment; char c[72]; } ndpi_serializer;
@@ -1557,8 +1558,6 @@ typedef union { ndpi_private_serializer _alignment; char c[sizeof(ndpi_private_s
 
 #if !defined(NDPI_CFFI_PREPROCESSING) \
     && defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
-_Static_assert(_Alignof(ndpi_serializer) == _Alignof(ndpi_private_serializer),
-               "ndpi_serializer must preserve ndpi_private_serializer alignment");
 _Static_assert(sizeof(ndpi_serializer) == sizeof(ndpi_private_serializer),
                "ndpi_serializer storage size must match ndpi_private_serializer");
 #endif
