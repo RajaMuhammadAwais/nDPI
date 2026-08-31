@@ -1766,6 +1766,7 @@ struct ndpi_flow_struct {
   } kerberos_buf;
 
   struct ndpi_dns_tcp_reasm_state *dns_tcp_reasm;
+  struct ndpi_dcerpc_tcp_reasm_state *dcerpc_tcp_reasm;
 
   struct {
     u_int8_t maybe_dtls:1, rtcp_seen:1, is_turn : 1, is_client_controlling:1, pad : 4;

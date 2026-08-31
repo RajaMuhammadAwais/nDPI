@@ -8193,6 +8193,15 @@ void ndpi_free_flow_data(struct ndpi_flow_struct* flow) {
     if(flow->kerberos_buf.pktbuf)
       ndpi_free(flow->kerberos_buf.pktbuf);
 
+    if(flow->dcerpc_tcp_reasm) {
+      u_int i;
+      for(i = 0; i < 2; i++) {
+        if(flow->dcerpc_tcp_reasm->dir[i].buf)
+          ndpi_free(flow->dcerpc_tcp_reasm->dir[i].buf);
+      }
+      ndpi_free(flow->dcerpc_tcp_reasm);
+      flow->dcerpc_tcp_reasm = NULL;
+    }
     if(flow->dns_tcp_reasm) {
       u_int i;
 
