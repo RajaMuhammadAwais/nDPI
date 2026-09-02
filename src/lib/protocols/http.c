@@ -1826,7 +1826,8 @@ static void process_response(struct ndpi_detection_module_struct *ndpi_struct,
 
   ndpi_validate_http_content(ndpi_struct, flow);
   ndpi_http_check_suspicious_mp4(ndpi_struct, flow);
-  if(flow->http.mp4_expected_body_bytes > flow->http.mp4_body_bytes &&
+  if((flow->http.mp4_ftyp_seen || flow->http.mp4_uuid_box_seen) &&
+     flow->http.mp4_expected_body_bytes > flow->http.mp4_body_bytes &&
      !flow->http.mp4_content_length_invalid &&
      flow->http.mp4_content_length_valid_count == 1)
     flow->max_extra_packets_to_check = 32;
@@ -1999,7 +2000,8 @@ static void ndpi_check_http_tcp(struct ndpi_detection_module_struct *ndpi_struct
 
       process_response(ndpi_struct, flow);
 
-      if(flow->http.mp4_expected_body_bytes > 0 &&
+      if((flow->http.mp4_ftyp_seen || flow->http.mp4_uuid_box_seen) &&
+         flow->http.mp4_expected_body_bytes > 0 &&
          !flow->http.mp4_content_length_invalid &&
          flow->http.mp4_content_length_valid_count == 1 &&
          flow->http.mp4_body_bytes < flow->http.mp4_expected_body_bytes)
@@ -2056,14 +2058,16 @@ void ndpi_search_http_tcp(struct ndpi_detection_module_struct *ndpi_struct,
   if((ndpi_struct->cfg.http_parse_response_enabled &&
       flow->host_server_name[0] != '\0' &&
       flow->http.response_status_code != 0 &&
-      (flow->http.mp4_expected_body_bytes == 0 ||
+      (!(flow->http.mp4_ftyp_seen || flow->http.mp4_uuid_box_seen) ||
+       flow->http.mp4_expected_body_bytes == 0 ||
        flow->http.mp4_content_length_invalid ||
        flow->http.mp4_content_length_valid_count != 1 ||
        flow->http.mp4_body_bytes >= flow->http.mp4_expected_body_bytes)) ||
      (!ndpi_struct->cfg.http_parse_response_enabled &&
       (flow->host_server_name[0] != '\0' ||
        flow->http.response_status_code != 0) &&
-      (flow->http.mp4_expected_body_bytes == 0 ||
+      (!(flow->http.mp4_ftyp_seen || flow->http.mp4_uuid_box_seen) ||
+       flow->http.mp4_expected_body_bytes == 0 ||
        flow->http.mp4_content_length_invalid ||
        flow->http.mp4_content_length_valid_count != 1 ||
        flow->http.mp4_body_bytes >= flow->http.mp4_expected_body_bytes)) ||
