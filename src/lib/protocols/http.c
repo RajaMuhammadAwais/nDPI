@@ -290,7 +290,7 @@ static void ndpi_http_check_suspicious_mp4(struct ndpi_detection_module_struct *
                (unsigned long long)flow->metadata.http.mp4_body_bytes,
                flow->metadata.http.mp4_uuid_bytes,
                (unsigned long long)uuid_ratio);
-      ndpi_set_risk(ndpi_struct, flow, NDPI_HTTP_SUSPICIOUS_CONTENT,
+      ndpi_set_risk(ndpi_struct, &flow->core, NDPI_HTTP_SUSPICIOUS_CONTENT,
                     risk_info);
       flow->metadata.http.mp4_anomaly_checked = 1;
     }
