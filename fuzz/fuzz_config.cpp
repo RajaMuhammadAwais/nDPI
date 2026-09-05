@@ -387,7 +387,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
                                         flow.c_address.v4, flow.c_port,
                                         flow.s_address.v4, flow.s_port);
     } else {
-      ndpi_find_ipv6_category_userdata(ndpi_info_mod, bool_value ? NULL : (struct in6_addr *)flow.c_address.v6);
+      ndpi_find_ipv6_category_userdata(ndpi_info_mod, bool_value ? NULL : (struct in6_addr *)&flow.c_address.v6);
     }
     /* Another "strange" function: fuzz it here, for lack of a better alternative */
     ndpi_search_tcp_or_udp(ndpi_info_mod, &flow);
