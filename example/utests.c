@@ -1334,6 +1334,7 @@ static void encodeDomainsUnitTest(bool load_suffix_list) {
     str = (char*)"gateway.unityads.unity3d.com"; assert(ndpi_get_custom_category_match(ndpi_str, str, strlen(str), &id, &breed) == 0); assert(id == NDPI_PROTOCOL_CATEGORY_ADVERTISEMENT);
     str = (char*)"unityads.unity3d.com"; assert(ndpi_get_custom_category_match(ndpi_str, str, strlen(str), &id, &breed) == 0); assert(id == NDPI_PROTOCOL_CATEGORY_ADVERTISEMENT);
     str = (char*)"unity3d.com"; assert(ndpi_get_custom_category_match(ndpi_str, str, strlen(str), &id, &breed) == -1);
+    str = (char*)"api.anthropic.com"; assert(ndpi_get_custom_category_match(ndpi_str, str, strlen(str), &id, &breed) == 0); assert(id == NDPI_PROTOCOL_CATEGORY_ARTIFICIAL_INTELLIGENCE);
 
     str = (char*)"something.arpa"; assert(ndpi_get_custom_category_match(ndpi_str, str, strlen(str), &id, &breed) == -1);
     str = (char*)"something.local"; assert(ndpi_get_custom_category_match(ndpi_str, str, strlen(str), &id, &breed) == -1);
